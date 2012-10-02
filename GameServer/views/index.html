@@ -1,0 +1,227 @@
+<html>
+	<head>
+		<title>게임</title>
+		<meta charset="utf-8">
+		<link href="/css/main.css" rel="stylesheet" type="text/css" />
+		<!--link rel="stylesheet" href="http://code.jquery.com/mobile/1.0a4.1/jquery.mobile-1.0a4.1.min.css">
+		<script type="text/javascript" src="http://code.jquery.com/mobile/1.0a4.1/jquery.mobile-1.0a4.1.min.js"></script-->
+		
+		<script src="/socket.io/socket.io.js"></script>
+		<script src="/js/jquery-1.7.1.js"></script>
+		<script> 
+			var socket = null;
+	        function connect() {
+	            console.log('Connecting to local server...');
+	            if (socket == null) {
+	                socket = io.connect(null,{'auto connect': false});
+	            	socket.on('connect', function () {
+	            		console.log("Connected");
+	            	});
+	        		socket.on('message', function (data){
+	       				console.log(data);
+	        		});
+	        		socket.on('disconnect',function(){
+	        			alert("Disconnected!!");
+	        		});
+	        	}
+	        	socket.socket.connect();
+	        }
+	        
+	        var fliped = false;
+	        
+	        var lastAcc ; 
+	        $(document).bind("mobileinit", function(){
+	        	  //apply overrides here
+	        	});
+	    	$(document).ready(function(){
+	    		if (window.DeviceMotionEvent==undefined) {
+	    			alert("브라우저가 모션 센서를 지원하지 않습니다.");
+	    		}
+	    		else{
+	    			// Shake sensitivity (a lower number is more)
+	    			var sensitivity = 20;
+	    			// Position variables
+	    			var x1 = 0, y1 = 0, z1 = 0, x2 = 0, y2 = 0, z2 = 0;
+	    			// Listen to motion events and update the position 
+	    			window.addEventListener('devicemotion', function (e) {
+	    				lastAcc = e.accelerationIncludingGravity;
+	    				x1 = e.accelerationIncludingGravity.x;
+	    				y1 = e.accelerationIncludingGravity.y;
+	    				z1 = e.accelerationIncludingGravity.z;
+	    				$("#top").html(x1 + " : " + y1 + " : " + z1);
+		   			}, false);
+
+	    			// Periodically check the position and fire 
+	    			// if the change is greater than the sensitivity 
+	    			setInterval(function () {	
+	    				var change = Math.abs(x1-x2+y1-y2+z1-z2);
+	    				if (change > sensitivity) {
+	    					//alert('Shake!');	  
+	    					//shake 이벤트 발생시 서버에 통보
+	    					socket.emit("deviceMotion",{type:"shake",acc : lastAcc});
+	    				}
+	    				// Update new position
+	    				x2 = x1;
+	    				y2 = y1;
+	    				z2 = z1;
+	    			}, 150);
+	    			/*
+					window.ondevicemotion = function(event) {
+		    			ax = event.accelerationIncludingGravity.x;
+		    			ay = event.accelerationIncludingGravity.y;
+		    		 	az = event.accelerationIncludingGravity.z;
+		    		 	$("#top").html(ax + " : " + ay + " : " + az);
+		    		  	
+		    		 	rotation = event.rotationRate;
+		    		  	if (rotation != null) {
+		    		    	arAlpha = Math.round(rotation.alpha);
+		    		    	arBeta = Math.round(rotation.beta);
+		    		    	arGamma = Math.round(rotation.gamma);
+		    		  	}
+		    		};
+		    		*/
+		    		window.ondeviceorientation = function(event) {
+		    			x = Math.round(event.alpha);
+		    		  	y = Math.round(event.beta);
+		    		  	z = Math.round(event.gamma);
+		    		
+		    			if( ! fliped)
+		    			{
+		    				if(Math.abs(z) > 160 && Math.abs(y) < 20)
+		    				{
+		    					fliped = true;
+	    						socket.emit("fliped");
+		    				}
+		    			}
+		    			else
+		    			{
+		    				if( !( Math.abs(z) > 160 && Math.abs(y) < 20 ))
+		    				{
+		    					fliped = false;
+		    					socket.emit("fliped-reverse");
+		    				}
+		    			}
+		    			
+		    			$("#bottom").html(event.alpha + " : " + event.beta + " : " + event.gamma);
+		    		  	
+		    		};	
+	    		}
+	    		
+	    		/*
+	    		var canvas = document.getElementById('myCanvas');
+	    	    canvas.width  = $("#myCanvas").width();
+	    	    canvas.height = $("#myCanvas").height();
+	    	   	var ctx = canvas.getContext('2d');
+	    	    var color = "red";
+	    	    var lineWeight = 3;
+	    	    
+				// touch start
+	    		canvas.addEventListener("touchstart", function(event) {
+	    			var touch = event.touches[0];
+	    			ctx.beginPath();
+	    			ctx.strokeStyle = color;		
+	    			ctx.lineWidth	= lineWeight;
+	    			ctx.moveTo(touch.pageX - $("#myCanvas").offset().left, 
+	    					   touch.pageY - $("#myCanvas").offset().top); 
+	    		});
+	    		// touch move
+	    		canvas.addEventListener("touchmove", function(event) {
+	    			console.log(event);
+	    		    event.preventDefault();
+	    			ctx.lineTo(event.touches[0].pageX - $("#myCanvas").offset().left, 
+	    					   event.touches[0].pageY - $("#myCanvas").offset().top);
+	    			ctx.stroke();
+	    		});
+	    		// touch end
+	    		canvas.addEventListener("touchend", function(event) {
+	    			ctx.closePath();
+	    			ctx.save();
+	    		});
+	    		canvas.addEventListener("touchcancel", function(event) {
+	    			ctx.closePath();
+	    			ctx.save();
+				});	  	
+	    		*/
+	    		$(".feeling-slider").bind("touchend",function(e){
+	    			socket.emit("newFeeling",{feeling: Number($(this).val()) / Number($(this).attr("max"))});
+	    			toNextScene();
+		    	});
+	    		/*
+	    		$(".feeling-slider")[0].addEventListener("touchend", function(event) {
+	    		});*/
+	    	});
+	    	
+			function toRGBString(r,g,b){
+				return "rgb("+Math.round(r)+","+Math.round(g)+","+Math.round(b)+")";
+			}
+			function onFeelingChange(){
+				console.log("asdfasdf");
+				var data = $(".feeling-slider").val() / 10000;
+				$("section").css("background-color",toRGBString(data*255,data*255,data*255));
+			}
+			function toNextScene(){
+				$('#feelingScene').fadeOut(); 
+				$('#eventScene').fadeIn();
+			}
+		</script>
+		<style>
+		html,body{
+			width:100%;
+			height:100%;
+			overflow:hidden;
+		}
+		*{
+			font-size: 1em;
+			letter-spacing: -1px;
+			font-family: NanumGothic,"Apple SD Gothic Neo","Malgun Gothic",AppleGothic,Dotum,sans-serif;
+		}
+		article{
+			position:relative;
+			width:100%;
+			height:100%;
+		
+		}
+		.scene_container{
+			width:100%;
+			height:100%;
+		}
+		
+		.feeling-slider
+		{
+			-webkit-appearance: slider-vertical;
+			height:100%;
+		    background-color:red; 
+		} 
+		.feeling-slider::-webkit-slider-thumb { 
+		    -webkit-appearance: none !important; 
+		    background:blue; 
+		    height:100px; 
+		    width:300px;
+		} 
+		</style>
+	</head>
+
+	<body onLoad="connect()">
+		<!--  header>
+		</header-->
+		<article>
+			<section class="scene_container" style="background-color:black" id="feelingScene">
+				<input onchange = "onFeelingChange();" 
+					   onmouseup="toNextScene();" 
+					   type="range" class="feeling-slider" name="slider" 
+					   value="0" min="0" max="10000"/>
+				<div style="height:100%;width:30%;background-color:white">
+					<div> </div>
+				</div>
+
+			</section>
+			<section class="scene_container" id="eventScene" style="display:none">
+				<canvas style="background-color:blue;width:100%;height:500px" id="myCanvas"></canvas></br>
+				<div onclick = 'socket.emit("deviceMotion",{type:"shake"});' id="top" style="width:100%"></div>
+				<div id="bottom" style="width:100%"></div>
+			</section>
+		</article>
+		<!-- footer>
+		</footer-->
+	</body>
+</html>

@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="ko">
+	<head>
+		<title>게임</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width,initial-scale=1.0,minimum-scale=1.0,maximum-scale=1.0">
+		<!--link href="/css/main.css" rel="stylesheet" type="text/css" /-->
+		<link href="/spinningwheel.css" rel="stylesheet" type="text/css" />
+		
+		<script src="/socket.io/socket.io.js"></script>
+		<script src="/js/jquery-1.7.1.js"></script>
+		<script src="/js/jquery-ui.js"></script>
+		<script src="/js/jquery.ui.touch-punch.js"></script>
+		<script src="/js/sprintf.js"></script>
+		<script src="/spinningwheel-min.js"></script>
+		<!--link rel="stylesheet" href="http://code.jquery.com/mobile/1.0a4.1/jquery.mobile-1.0a4.1.min.css">
+		<script type="text/javascript" src="http://code.jquery.com/mobile/1.0a4.1/jquery.mobile-1.0a4.1.min.js"></script-->
+		<script> 
+				(function($) {
+					$.fn.elasticScroll = function(option){
+						(function(target){
+							$(target)[0].elasticScrollOption = option;
+							var isInScroll = false;
+							
+							$(target).bind("scroll",function(){
+								isInScroll = true;
+							});
+							$(target).bind("touchend mouseup",function(){
+								//if(isInScroll)
+								{
+									var elementHeight = $($(option.elementSelector)[0]).outerHeight();
+									var modHeight = target[0].scrollTop%elementHeight;
+									
+									target[0].scrollTop = (target[0].scrollTop) +
+														  ((modHeight > elementHeight*0.5) ? (elementHeight-modHeight) : (-modHeight));
+									target[0].scrollTop -= target[0].scrollTop%elementHeight;
+									console.log(target[0].scrollTop);
+									isInScroll = false;
+									
+									if(option.onSelected) 
+										option.onSelected( $(target).find(option.elementSelector) [ Math.floor(target[0].scrollTop / elementHeight)] );
+								}
+							});
+						})(this);	
+					};
+					$.fn.elasticScrollShowElement = function(index){
+						$(this)[0].scrollTop = $($($(this)[0].elasticScrollOption.elementSelector)[0]).outerHeight() * index;
+					};
+					
+				})(jQuery);
+				(function($){
+					function eventToDotIndex(dotWidth,dotHeight,e){
+						return Math.ceil(e.pageX / dotWidth) + 
+							   (Math.ceil(e.pageY / dotHeight) - 1) * 3;
+					}
+					function drawLine(startIndex,endIndex){
+						
+					}
+					$.fn.setLineStartPos = function(pos,excludeOffset){
+						if(excludeOffset){
+							var parrentOffset = $(this).parent().offset();
+							pos.left -= parrentOffset.left;
+							pos.top  -= parrentOffset.top;
+						}
+						this.attr({
+							x1 : pos.left,
+							y1 : pos.top
+						});
+					};
+					$.fn.setLineEndPos = function(pos,excludeOffset){
+						if(excludeOffset){
+							var parrentOffset = $(this).parent().offset();
+							pos.left -= parrentOffset.left;
+							pos.top  -= parrentOffset.top;
+						}
+						this.attr({
+							x2 : pos.left,
+							y2 : pos.top
+						});
+					}; 
+					$.fn.patternLock = function(option){
+						(function(target){
+							var currentPattern = [];		
+							var lastDotIndex = null;
+							var lastDot = null;
+							var targetingLine = null; 
+							
+							
+							var touchStarted = false;
+							
+							$(target).bind("touchstart mousedown",function(e){
+								currentPattern	 = [];
+								lastDotIndex = null;
+								lastDot = null;
+								touchStarted = true;
+										
+								this.trigger("touchmove");
+								this.trigger("mousemove");
+								
+								return false;
+							});
+							
+							$(target).bind("touchmove mousemove",function(e){
+								if (! touchStarted)
+									return true;
+								
+								var touchbleDots = $($(target).find(option.elementSelector));
+								var newDotIndex = eventToDotIndex($(this).width()/3,$(this).height()/3,e.originalEvent);
+								var newDot = touchbleDots[newDotIndex - 1] //해당하는 닷에 마우스가 충돌했는지 검사한다.
+								
+								if(newDot && $(newDot).hitTest(e.originalEvent.pageX, e.originalEvent.pageY)){
+									if(newDotIndex != lastDotIndex && currentPattern.indexOf(newDotIndex) < 0)
+									{
+										console.log(newDotIndex);
+										currentPattern.push(newDotIndex);
+										//이미 지난경우
+										if(lastDot)
+										{
+											var prevDotPos = $(lastDot).centerPos();
+											var currentDotPos = $(newDot).centerPos();
+											
+											var newLine = document.createElementNS("http://www.w3.org/2000/svg", "line");
+											$(".line-overlay")[0].appendChild(newLine);
+											$(newLine).setLineStartPos(prevDotPos,true);
+											$(newLine).setLineEndPos(currentDotPos,true);
+											//이전점과 새점을 잇는 선을 긋고,
+											
+											//타겟팅 라인의 시작점을 바꾼다.
+											$(targetingLine).setLineStartPos(currentDotPos,false);
+										}
+										else {
+											//닷을 처음 선택한경우
+											var dotPos = $(newDot).centerPos();
+											targetingLine = document.createElementNS("http://www.w3.org/2000/svg", "line");
+											$(".line-overlay")[0].appendChild(targetingLine);
+											$(targetingLine).setLineStartPos(dotPos,true);
+											$(targetingLine).setLineEndPos(dotPos,true);
+											
+										}
+										if(option.onElementSelected)
+											option.onElementSelected(newDot);
+											
+										lastDot = newDot;
+										lastDotIndex = newDotIndex;
+									}
+								}
+								
+								if(targetingLine)
+								{
+									var svgPos = $(".line-overlay").offset();
+									$(targetingLine).setLineEndPos({ 
+										left : e.originalEvent.pageX,
+										top  : e.originalEvent.pageY
+									},true);
+									console.log(targetingLine);
+								}
+								
+								return false;
+							});
+							$(target).bind("touchend mouseup",function(e){
+								if(touchStarted)
+								{
+									console.log(currentPattern);
+									option.onTryToUnlock(currentPattern);
+									if(targetingLine)
+									{
+										$(targetingLine).remove();
+									}
+									touchStarted = false;
+								}
+							});	
+						})(this);
+					};
+					
+					
+					$.fn.hitTest = function(x, y){
+					    var bounds = this.offset();
+					    bounds.right = bounds.left + this.outerWidth();
+					    bounds.bottom = bounds.top + this.outerHeight();
+					    return x >= bounds.left && 
+				    		   x <= bounds.right &&
+				    		   y <= bounds.bottom &&
+				    		   y >= bounds.top;
+				    };
+				    $.fn.centerPos = function(){ 
+				    	var bounds = this.offset(); 
+				    	bounds.left += this.outerWidth()  * 0.5;
+				 	  	bounds.top  += this.outerHeight() * 0.5;
+				    	return bounds;
+					};
+				})(jQuery);	
+				
+			
+			
+			var socket = null;
+	        function connect() {
+	            console.log('Connecting to local server...');
+	            if (socket == null) {
+	                socket = io.connect(null,{'auto connect': false});
+	            	socket.on('connect', function () {
+	            		console.log("Connected");
+	            	});
+	        		socket.on('message', function (data){
+	       				console.log(data);
+	        		});
+	        		socket.on('disconnect',function(){
+	        			alert("Disconnected!!");
+	        		});
+	        		
+	        		
+	        		socket.on("controlSuccess",function(data){
+		    			setTimeout(function(){
+			    			$(".pattern-lock").animate({top:"-100%"},function(){
+			    				$(".pattern-lock-dot").removeClass("selected");
+			    				$(".line-overlay").empty();
+			    			});
+			    		}, 1);
+		    			$(".control-dot").animate({"background-color":"#3a8cbe"});
+		    			$(".calendar-month-view").trigger("touchend");
+		    			$(".calendar-day-view").trigger("touchend");
+						controlState = true;
+						
+						
+						
+		    			sendShowDateMessage();
+				    });
+			    	socket.on("controlFail",function(data){
+			    		$(".pattern-lock .selected").removeClass("selected")
+			    									.addClass("wrong-dot");
+			    									
+			    		setTimeout(function(){
+			    			$(".pattern-lock").animate({top:"-100%"},function(){
+			    				$(".pattern-lock-dot").removeClass("wrong-dot");
+			    				$(".line-overlay").empty();
+			    			});
+			    		}, 500);
+			    		
+			    	//	alert("비밀번호가 틀렸습니다");
+			    	});
+			    	socket.on("controlEnd",function(data){
+				    	alert("컨트롤 시간이 끝났습니다");
+				    	$(".control-dot").animate({"background-color":"#e7e0e0"});
+				   		controlState = false;
+				   	});
+	        	}
+	        	socket.socket.connect();
+	        }
+		   
+		    var sensitivity = 20;
+		    var lastAcc = null;
+		    function startDeviceMotionCheck(){
+		    	window.addEventListener('devicemotion', function (e) {
+	    			var currentAcc = e.accelerationIncludingGravity;
+	    			if(lastAcc)
+	    			{
+		    			var change = Math.sqrt(
+		    							Math.pow(currentAcc.x - lastAcc.x,2) + 
+		    							Math.pow(currentAcc.x - lastAcc.x,2) +
+		    							Math.pow(currentAcc.x - lastAcc.x,2)
+		    						);
+		    			if(change > sensitivity)
+		    			{
+		    				var writer = $(".event_writter_input").val();
+		    				var text   = $(".event_text_input").val();
+		    				if(/*writer && */text)
+		    				{
+				    			socket.emit("newEvent",{
+		    						TARGET_DATE : sprintf("2012-%s-%s",g_currentMonth,g_currentDay),
+			    					WRITTER     : writer,
+			    					TEXT 		: text 
+			    				});
+			    				$(".event_writter_input").val("");
+			    				$(".event_text_input").val("");
+			    				setTimeout(function(){alert("이벤트 등록되었습니다");},1);
+			    				
+			    			}
+		    			}
+	    			}
+	    			lastAcc = currentAcc;
+	    		}, false);
+			    window.ondeviceorientation = function(event) {
+		    		x = Math.round(event.alpha);
+		    		y = Math.round(event.beta);
+		    		z = Math.round(event.gamma);
+		    		if( ! fliped){
+		    			if(Math.abs(z) > 160 && Math.abs(y) < 20)
+		    			{
+		    				fliped = true;
+		    				if(controlState == true){
+			    				//현재 사용자가 컨트롤중인경우 ,
+			    				socket.emit("stopControl",{});
+		    				}
+		    			}
+		    		}
+		    		else{
+		    			if( !( Math.abs(z) > 160 && Math.abs(y) < 20 )){
+		    				fliped = false;
+		    			//	socket.emit("message","fliped-reverse");
+		    			}
+		    		}
+		    	};	
+		    }
+	        var fliped = false;
+	        
+	        
+	        function toRGBString(r,g,b){
+				return "rgb("+Math.round(r)+","+Math.round(g)+","+Math.round(b)+")";
+			}
+			
+	        var controlState = false;
+	        
+	        var g_dayForMonth = [31,29,31,30,31,30,31,31,30,31,30,31];
+	    	var g_currentMonth = "01";
+	    	var g_currentDay   = "01";
+	        
+	        
+	        
+	        
+	    	var lastSendedMonth = g_currentMonth;
+	    	var lastSendedDay   = g_currentDay;
+	        function sendShowDateMessage()
+	        {
+		        if(controlState && !((g_currentMonth == lastSendedMonth) && g_currentDay == lastSendedDay))
+		        {
+			        socket.emit("showDate",{MONTH : g_currentMonth, DAY:g_currentDay});
+			        lastSendedMonth = g_currentMonth;
+			        lastSendedDay   = g_currentDay;
+			    }
+			}
+	        
+	        
+	        $(document).bind("mobileinit", function(){
+	        	  //apply overrides here
+	        });
+	    	$(document).ready(function(){
+	    		$("article").css("height",$("body").height() - $("header").height());
+	    	
+	    	
+	    		$(".calendar-month-view").elasticScroll({
+	    			elementSelector : ".calendar-month",
+	    			onSelected : function(element){
+	    				$(".calendar-day-container").empty();
+						g_currentMonth = $(element).html() ;
+						for(var i = 0;i<g_dayForMonth[Number(g_currentMonth)- 1];i++){
+							$(".calendar-day-container").append(sprintf('<div class="calendar-day">%02d</div>',i+1));	
+						}
+						
+						$(".calendar-day-view").trigger("touchend");
+						
+						sendShowDateMessage();
+					}
+	    		});
+	    		$(".calendar-day-view").elasticScroll({
+	    			elementSelector : ".calendar-day",
+	    			onSelected : function(element){
+	    				g_currentDay = $(element).html();
+	    				
+	    				sendShowDateMessage();
+	    			}
+	    		});
+	    		
+	    		
+	    		
+	    		
+	    		$(".feeling-slider-button").css("top",$(".feeling-slider-view").height() - $(".feeling-slider-button").height());
+	    		$(".feeling-slider-container").css("height",$(".feeling-slider-view").height() * 2 - $(".feeling-slider-button").height());
+	    		
+	    		$(".feeling-slider-view").bind("touchend",function(e){
+	    			var max = $(this).height() - $(".feeling-slider-button").height();
+	    			socket.emit("newFeeling",{FEELING:$(this)[0].scrollTop / max});
+	    			toNextScene();
+	    		});
+	    		$(".feeling-slider-container").bind("click",function(e){
+	    			var max = $(this).height() - $(".feeling-slider-button").height();
+	    			console.log($(this)[0].scrollTop / max);
+	    			socket.emit("newFeeling",{FEELING:$(this)[0].scrollTop / max});
+	    			toNextScene();
+	    		});
+	    		$(".feeling-slider-view").bind("scroll",function(e){
+	    			var max = $(this).height() - $(".feeling-slider-button").height();
+	    			var data = $(this)[0].scrollTop / max;
+		    //		$("#feelingScene").css("background-color",toRGBString(data*255,data*255,data*255));
+		    		var colorData = colorWithFeeling(data);
+		    		$("#feelingScene").css("background-color",toRGBString(colorData[0],colorData[1],colorData[2]));
+	    		});
+	    		
+	    					
+	    					
+	    		
+	    		$(".pattern-lock").patternLock({
+		    		onTryToUnlock : function(pattern){
+		    			socket.emit("startControl",{password:pattern});	
+			    	},
+			    	elementSelector : ".pattern-lock-dot",
+			    	onElementSelected : function(element){
+			    		$(element).addClass("selected");
+			    		/*
+				    		$(element).css({"background-color":"blue"});
+				    	*/
+				    }
+			    });
+	    					
+	    					
+	    					
+	    							    	
+	    		if (window.DeviceMotionEvent==undefined) {
+	    			alert("브라우저가 모션 센서를 지원하지 않습니다.");
+	    		}
+	    		else{
+	    			startDeviceMotionCheck();
+	    		}
+	    		
+	    		$("#control-state").click(function(){
+	    			if(controlState == false){
+	    				$(".pattern-lock").animate({top:"0%"});
+	    			}
+	    			else 
+	    			{
+	    			
+	    			}
+	    		});
+	    		
+	    		
+	    		initFeelingPallete();
+	    		
+	    	});
+	    	
+	    	var feelingBarWidth = 0;
+	    	function initFeelingPallete (){
+		    	var img = new Image();
+				img.src = "./img/feelingbar.jpg";
+				img.onload = function(){
+					var context = document.getElementById('canvas').getContext('2d');
+					$("#canvas").width(1000);
+					$("#canvas").height(img.height);
+					context.width = $("#canvas").width();
+					context.drawImage(img, 0, 0);
+					
+					feelingBarWidth = img.width;
+				}
+			}
+	    	function colorWithFeeling(feeling){
+		    	var context = document.getElementById('canvas').getContext('2d');
+				return context.getImageData(feelingBarWidth * (1-feeling), 1, 1, 1).data;
+	    	}
+			function toNextScene(){
+			
+				$('#feelingScene').fadeOut(); 
+				$('#eventScene').fadeIn();
+				
+				var today = new Date();
+	    		$(".calendar-month-view").elasticScrollShowElement(today.getMonth());
+	    		$(".calendar-day-view").elasticScrollShowElement(today.getDate()-1);
+	    			
+			}
+		</script>
+		<style>
+		html,body{
+			width:100%;
+			height:100%;
+			overflow:hidden;
+		}
+		*{
+			font-size: 1em;
+			letter-spacing: -1px;
+			font-family: NanumGothic,"Apple SD Gothic Neo","Malgun Gothic",AppleGothic,Dotum,sans-serif;
+			margin: 0px;
+			padding: 0px;
+		}
+		
+		
+		header {
+			height:40px;
+			background: -webkit-linear-gradient(#7ec0e9 0%, #1872a7 100%)
+		}
+		header p{	
+			text-align: center; 
+			color: white; 
+			vertical-align: middle;
+			padding-top: 9px;
+		}
+		article{
+			position:relative;
+			width:100%;
+			height:100%;
+		}
+		.scene_container{
+			width:100%;
+			height:100%;
+			position:absolute;
+			left:0px;
+			top :0px;
+		}
+		.feeling-slider-view{
+			width:20%;
+			height:100%;
+			overflow:scroll;
+			display:inline-block;
+			position: relative;
+		}
+		.feeling-slider-dash{
+			position:fixed;
+			width: 0px;
+			left:50%;
+		
+			margin-left:  -4px;
+			height:100%;
+			border-width: 4px;
+			border-style: dashed;
+			border-color: black;
+		}
+		.feeling-slider-container{
+			width:100%;
+			height:200%;
+		}
+		.feeling-slider-button {
+			width:29px;
+			height: 49px;
+			margin-left: auto;
+			margin-right: auto;
+			position:relative;
+			background-image : url("img/slider-button.png");
+			background-repeat: no-repeat;
+			background-size: cover;
+		}
+		
+		
+		.event_date_input{
+			width : 100%;
+			height: 1em;
+		}
+		.event_writter_input{
+			width : 100%;
+			height: 1em;
+		}
+		.event_text_input {
+			width  :100%;
+			height: 90px;
+			border: 1px solid #898989; 
+			-webkit-appearance: none;
+			box-sizing: border-box;
+			border-radius: 5px;
+		}
+		.slider-container{
+			width:30%;
+			height:100%;
+			display:inline-block;
+			position:relative;
+		}
+		.slider-button{
+			top:0px;
+			position:absolute;
+			width:50px;
+			height:50px;
+			background-color:red;
+		}
+		.calendar-month-view {
+			width  : 100%;
+			height : 100%; 
+			font-size: 5em;
+			overflow-x:hidden;
+			overflow-y:scroll;
+		}
+		.calendar-month-container {
+			display:inline-block;
+			width:100%;
+			height:auto; 
+			position: relative;
+		}
+		.calendar-month-container .calendar-month{
+			width:100%;
+			height:100px;
+			text-align : center;
+		}
+		.calendar-day-view {
+			width  : 100%;
+			height : 100%;
+			font-size: 5em;
+			overflow-x:hidden;
+			overflow-y:scroll;
+		}
+		.calendar-day-container {
+			display:inline-block;
+			width:100%;
+			height:auto; 
+			position: relative;
+		}
+		.calendar-day-container .calendar-day{
+			width:100%;
+			height:100px;
+			text-align : center;
+		}
+		
+		.pattern_anchor{
+			width:50%;
+			height:50%;
+			background-color: aqua;
+			border-radius: 10px;
+		}
+		#control-state{
+			width	:	50px;
+			height	:	50px;
+			margin-bottom	 : 25px;
+		}
+		
+		.pattern-lock {
+			width:100%;
+			height:100%; 
+			position:absolute; 
+			top:-100%;
+			background-color: #464646;
+			text-align : center;
+			opacity: 0.9;
+			left:0px;
+		}
+		.pattern-lock .pattern-lock-container{
+			display: inline-block;
+			width  : 100%;
+			height : 33%;
+			float  : left;
+		}
+		.pattern-lock .pattern-lock-dot{
+			display: inline-block;
+			width  : 60px;
+			height : 60px;
+			border-radius:50%;
+			background-color: #90989b;			
+		}
+		.pattern-lock .pattern-lock-dot .dot-layer{
+			margin-top:10%;
+			width : 80%;
+			height: 80%;
+			border-radius: 50%;
+			display: inline-block;
+			background-color: #464646;
+			z-index: -1;
+		}
+		.pattern-lock .pattern-lock-dot .dot{
+			margin-top:23%;
+			width : 54%;
+			height: 54%;
+			border-radius: 50%;
+			display: inline-block;
+			background-color: #90989b;
+			z-index: 10;
+		}
+		.pattern-lock .pattern-line{
+			border-radius: 10px;
+			width:20px;
+			background-color: black;
+		}
+		.pattern-lock .selected .dot{
+			background-color: #6AB1DD;
+		}
+		.pattern-lock .selected {
+			background-color: #6AB1DD;
+		}
+		.pattern-lock .wrong-dot .dot{
+			background-color: #F01E5B;
+		}
+		.pattern-lock .wrong-dot {
+			background-color: #F01E5B;
+		}
+		.pattern-table-container
+		{
+			max-width:500px;
+			width:100%;
+			max-height:500px;
+			height:100%;
+			
+			/*position:absolute;*/
+			
+			margin-left:auto;
+			margin-right:auto;	
+		}
+		.pattern-table-container table{
+			position: relative;
+			top: -100%;
+		}
+		.line-overlay {
+			z-index: 1000;
+		}
+		.line-overlay line {
+			stroke:rgb(150,150,150);
+			stroke-width:20;
+			stroke-linecap:round;
+		}
+		.control-dot {
+			border-radius: 50%;
+			width:35px	;
+			height:35px;
+			background-color: #E7E0E0;
+			box-shadow: 3px 3px 8px black;
+			margin-left: auto;
+			margin-right: auto;
+			margin-bottom: 5px;
+		}
+		
+		
+		</style>
+	</head>
+
+	<body onLoad="connect()">
+		<header>
+			<p>
+				Open Diary
+			</p>
+		</header>
+		<article>
+			
+			<section class="scene_container" id="eventScene" style="display:none;background-color:#FCF7F7;overflow:hidden;position:relative;padding-left:12px;padding-right:12px;box-sizing: border-box;">
+				<!--audio controls="controls" id="audioContainer">
+			 		<source src="bg1.mp3" type="audio/mpeg">
+			 		Your browser does not support the audio element.
+			 	</audio-->
+			 	<div style = "height: 100px;margin-top: 20px;">
+			 		<div id="control-state"  style="display:inline-block;float:left;margin-top:25px">
+				 		<div class="control-dot">
+				 		</div>
+				 		<p>
+				 			Control
+				 		</p>
+			 		</div>
+			 		<div style="height:100%;display:inline-block;float:left;margin-left: 35px;">
+						<div class="calendar-month-view" style="display:inline-block;width:94px">
+							<div class="calendar-month-container">
+								<div class="calendar-month">01</div>
+								<div class="calendar-month">02</div>
+								<div class="calendar-month">03</div>
+								<div class="calendar-month">04</div>
+								<div class="calendar-month">05</div>
+								<div class="calendar-month">06</div>
+								<div class="calendar-month">07</div>
+								<div class="calendar-month">08</div>
+								<div class="calendar-month">09</div>
+								<div class="calendar-month">10</div>
+								<div class="calendar-month">11</div>
+								<div class="calendar-month">12</div>
+							</div>
+						</div>
+						<div class="calendar-day-view" style="display:inline-block;width:94px">
+							<div class="calendar-day-container">
+								<div class="calendar-day">01</div>
+								<div class="calendar-day">02</div>
+								<div class="calendar-day">03</div>
+								<div class="calendar-day">04</div>
+								<div class="calendar-day">05</div>
+								<div class="calendar-day">06</div>
+								<div class="calendar-day">07</div>
+								<div class="calendar-day">08</div>
+								<div class="calendar-day">09</div>
+								<div class="calendar-day">10</div>
+								<div class="calendar-day">11</div>
+								<div class="calendar-day">12</div>
+								<div class="calendar-day">13</div>
+								<div class="calendar-day">14</div>
+								<div class="calendar-day">15</div>
+								<div class="calendar-day">16</div>
+								<div class="calendar-day">17</div>
+								<div class="calendar-day">18</div>
+								<div class="calendar-day">19</div>
+								<div class="calendar-day">20</div>
+								<div class="calendar-day">21</div>
+								<div class="calendar-day">22</div>
+								<div class="calendar-day">23</div>
+								<div class="calendar-day">24</div>
+								<div class="calendar-day">25</div>
+								<div class="calendar-day">26</div>
+								<div class="calendar-day">27</div>
+								<div class="calendar-day">28</div>
+								<div class="calendar-day">29</div>
+								<div class="calendar-day">30</div>
+								<div class="calendar-day">31</div>
+							</div>
+						</div>
+					</div>
+			 	</div>
+				<!--input class="event_writter_input"/> </br-->
+				<textarea class="event_text_input"></textarea>
+				<img style="margin-left: auto;margin-right: auto;display: block;" src = "./img/shake.png"/>
+
+				<div class="pattern-lock">
+					<div class="pattern-table-container" style="position:relative">
+						<svg class ="line-overlay" xmlns="http://www.w3.org/2000/svg" version="1.1">
+						</svg>
+						<table style="width:100%;height:100%;">
+							<tr>
+								<td>
+									<div class="pattern-lock-dot">
+										<div class="dot-layer">
+											<div class="dot"></div>
+										</div>
+									</div>
+								</td>	
+								<td>	
+									<div class="pattern-lock-dot">
+										<div class="dot-layer">
+											<div class="dot"></div>
+										</div>
+									</div>
+								</td>
+								<td>
+									<div class="pattern-lock-dot">
+										<div class="dot-layer">
+											<div class="dot"></div>
+										</div>
+									</div>
+								</td>
+							</tr>
+							<tr>
+								<td>
+									<div class="pattern-lock-dot">
+										<div class="dot-layer">
+											<div class="dot"></div>
+										</div>
+									</div>
+								</td>	
+								<td>	
+									<div class="pattern-lock-dot">
+										<div class="dot-layer">
+											<div class="dot"></div>
+										</div>
+									</div>
+								</td>
+								<td>
+									<div class="pattern-lock-dot">
+										<div class="dot-layer">
+											<div class="dot"></div>
+										</div>
+									</div>
+								</td>
+							</tr>
+							
+							<tr>
+								<td>
+									<div class="pattern-lock-dot">
+										<div class="dot-layer">
+											<div class="dot"></div>
+										</div>
+									</div>
+								</td>	
+								<td>	
+									<div class="pattern-lock-dot">
+										<div class="dot-layer">
+											<div class="dot"></div>
+										</div>
+									</div>
+								</td>
+								<td>
+									<div class="pattern-lock-dot">
+										<div class="dot-layer">
+											<div class="dot"></div>
+										</div>
+									</div>
+								</td>
+							</tr>
+						</table>
+					</div>
+				</div>
+			</section>
+			<section class="scene_container" style="background-color:rgb(0,0,0);text-align:center" id="feelingScene" >
+				<div class ="feeling-slider-view">
+					<div class="feeling-slider-dash">
+					</div>
+					<div class ="feeling-slider-container">
+						<div class ="feeling-slider-button">
+						</div>
+					</div>
+				</div>
+				<!--input onchange = "onFeelingChange();" 
+					   onmouseup="toNextScene();" 
+					   type="range" class="feeling-slider" name="slider" 
+					   value="0" min="0" max="10000"/-->
+			</section>
+			<canvas id="canvas" style="display:block">
+			</canvas>
+		</article>
+	</body>
+</html>
