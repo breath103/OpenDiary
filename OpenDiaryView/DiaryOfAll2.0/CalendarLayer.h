@@ -10,6 +10,8 @@
 #import "cocos2d.h"
 #import "DayView.h"
 #import "GridTemplate.h"
+#import "CCPolyLine.h"
+
 
 enum CalendarLayerState {
     CALENDAR_STATE_YEAR_VIEW,
@@ -29,8 +31,6 @@ typedef enum CalendarLayerState CalendarLayerState;
     CCTexture2D* feelingbar;
     ccColor4B* feelingbarData;
    
-   // NSMutableArray* monthLabels;
-  //  NSMutableArray* weekDayLabels;
     CCLabelTTF* monthLabels[12];
     CCLabelTTF* weekDayLabels[7];
     
@@ -40,7 +40,14 @@ typedef enum CalendarLayerState CalendarLayerState;
     
     GridTemplate* dayGrid;
     GridTemplate* monthGrid;
+
+    NSString* lastString;
+    CCPolyLine* polyLine;
+    
+    CCSprite* paintBackground;
 }
+
+@property (nonatomic,retain) CCMotionStreak* motionStreak;
 
 @property (nonatomic,retain) NSOutputStream* outputStream;
 @property (nonatomic,retain) NSInputStream*  inputStream;

@@ -17,7 +17,6 @@
     if(self){
        // writter = [[dict objectForKey:@"WRITTER"] mutableCopy];
         text    = [[dict objectForKey:@"TEXT"] mutableCopy] ;
-        NSLog(@"%@-%@-%@",dict,writter,text);
     }
     return self;
 }

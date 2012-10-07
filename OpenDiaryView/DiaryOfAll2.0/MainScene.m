@@ -17,8 +17,7 @@
     self = [super init];
     if(self){
         calendarLayer = [[CalendarLayer alloc]init];
-        dayLayer      = [[DayLayer alloc] initWithFrame:CGRectMake(0, 0,
-                                                                   self.contentSize.width,250)];
+        dayLayer      = [[DayLayer alloc] initWithFrame:CGRectMake(0, 0,self.contentSize.width,270)];
         [self addChild:calendarLayer];
         [self addChild:dayLayer];
     }

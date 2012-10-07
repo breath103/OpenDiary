@@ -11,7 +11,8 @@
 #import "MainScene.h"
 
 @implementation DiaryOfAll2_0AppDelegate
-@synthesize window=window_, glView=glView_;
+@synthesize window=window_;
+@synthesize glView=glView_;
 
 - (void)applicationDidFinishLaunching:(NSNotification *)aNotification
 {

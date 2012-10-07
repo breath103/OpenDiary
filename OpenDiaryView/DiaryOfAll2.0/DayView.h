@@ -20,6 +20,7 @@
 @property (atomic   ,assign) double feeling;
 @property (nonatomic,retain) NSMutableArray* events;
 @property (nonatomic,retain) NSDateComponents* dateComponents;
+@property (nonatomic,retain) NSMutableArray* paints;
 @property (nonatomic,readonly) NSInteger year;
 @property (nonatomic,readonly) NSInteger month;
 @property (nonatomic,readonly) NSInteger day;

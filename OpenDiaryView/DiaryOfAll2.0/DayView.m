@@ -18,6 +18,7 @@
 @synthesize eventIcon;
 @synthesize eventsIndicator;
 @synthesize dateComponents;
+@synthesize paints;
 @synthesize year;
 @synthesize month;
 @synthesize day;
@@ -40,6 +41,9 @@
                                       eventIcon.contentSize.height/2 + 4);
     eventsIndicator.scale = 1.3f;
     eventIcon.visible = FALSE;
+    
+    paints = [NSMutableArray new];
+    
     [eventIcon addChild:eventsIndicator];
     [self addChild:eventIcon];
    
@@ -52,7 +56,7 @@
     NSDate* targetDate = [formatter dateFromString: dateStr];
     dateComponents  = [[NSCalendar currentCalendar]components : NSDayCalendarUnit | NSMonthCalendarUnit | NSYearCalendarUnit | NSWeekdayCalendarUnit
                                                      fromDate : targetDate];
-    
+
     year     = dateComponents.year;
     month    = dateComponents.month;
     day      = dateComponents.day;

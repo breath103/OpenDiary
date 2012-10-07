@@ -17,12 +17,13 @@
 float minOpacity = 0.1f;
 
 ccColor3B defaultFontColor = {255,255,255};
-
+ 
 
 static int monthsDayArray[12] = {31,29,31,30,31,30,31,31,30,31,30,31};
 @implementation CalendarLayer
 @synthesize outputStream;
 @synthesize inputStream;
+@synthesize motionStreak;
 -(id) init{
     self = [super init];
     if(self){
@@ -45,7 +46,6 @@ static int monthsDayArray[12] = {31,29,31,30,31,30,31,31,30,31,30,31};
         feelingbarData = (ccColor4B*)malloc(feelingbarLength * sizeof(ccColor4B));
         [feelingbar keepData : feelingbarData
                       length : feelingbarLength];
-        
         batchNode = [CCSpriteBatchNode batchNodeWithFile:@"daycell.png"];
         [self addChild:batchNode];
         
@@ -77,7 +77,6 @@ static int monthsDayArray[12] = {31,29,31,30,31,30,31,31,30,31,30,31};
             DayView* dateView = [DayView spriteWithFile:@"daycell.png"];
             [dateView initComponents];
             [dateView resizeTo:dayGrid.cellSize];
-            
             dateView.position = [dayGrid positionWithIndex:ccp(j,i) ForNode:dateView];
         
             [self addChild:dateView];
@@ -120,18 +119,27 @@ static int monthsDayArray[12] = {31,29,31,30,31,30,31,31,30,31,30,31};
     
     return color;
 }
+-(ccColor3B) colorWithDict : (NSDictionary*) dict{
+    return ccc3([[dict objectForKey:@"r"] doubleValue],
+                [[dict objectForKey:@"g"] doubleValue],
+                [[dict objectForKey:@"b"] doubleValue]);
+}
 /*
 -(ccColor4B) colorWithFeeling : (double) feeling{
     return ccc4(255 * feeling, 255* feeling, 255* feeling, 255);
 }
  */
+-(void) draw{
+    [super draw];
+}
 -(void) connectToServer{
     [self initCalendarViews];
     NSOutputStream* oStream;
     NSInputStream*  iStream;
     
     
-    NSHost *host = [NSHost hostWithAddress: @"127.0.0.1"];//@"64.23.73.155"];//@"203.253.20.217"];
+ //   NSHost *host = [NSHost hostWithAddress: @"127.0.0.1"];//@"203.253.20.217"];
+    NSHost *host = [NSHost hostWithAddress: @"64.23.73.155"];
     
     [NSStream getStreamsToHost:host
                           port:7777
@@ -200,25 +208,21 @@ static int monthsDayArray[12] = {31,29,31,30,31,30,31,31,30,31,30,31};
         [weekDayLabels[i] runAction:[CCFadeOut actionWithDuration:1.0f]];
     }
 }
+
+-(void) showMonthTitle : (int) month
+{
+    
+}
+-(void) hideMonthTitle{
+}
 -(void) initDayViewInfoWithDateString : (NSString*) dateString
                                  Dict : (NSDictionary*) dayDict {
     //뷰에 보여질 애니메이션 관련된 것들
     NSDateComponents* componets = [self dateStringToComponents:dateString];;
     double feeling = [[dayDict objectForKey:@"FEELING"] doubleValue];
     ccColor4B toColor = [self colorWithFeeling:feeling];
-    /*
-    id tintAction = [CCTintTo actionWithDuration : 1.5f
-                                             red : toColor.r
-                                           green : toColor.g
-                                            blue : toColor.b];
     DayView* dayView = dayViews[componets.month - 1][componets.day -1] ;
-    [dayView runAction:tintAction];
-    */
-    DayView* dayView = dayViews[componets.month - 1][componets.day -1] ;
-    
     dayView.color = ccc3(toColor.r, toColor.g, toColor.b);
-
-    //정보 설정에 관한 것들
     [dayView setInfoWithDateString : dateString
                               dict : dayDict];
 }
@@ -317,13 +321,18 @@ static int monthsDayArray[12] = {31,29,31,30,31,30,31,31,30,31,30,31};
     [mainScene.dayLayer showDay:view];
 }
 BOOL isNeedToProcessNetworkDatas = false;
+-(CGPoint) dictToPoint : (NSDictionary*) dict{
+    CGPoint point = CGPointMake([[dict valueForKey:@"x"] doubleValue],
+                                [[dict valueForKey:@"y"] doubleValue]);
+    return point;
+}
 -(void) update:(ccTime)delta
 {
     if(isNeedToProcessNetworkDatas)
     {
         isNeedToProcessNetworkDatas = false;
         //read data
-        uint8_t buffer[500000] = {0,};
+        uint8_t buffer[20000] = {0,};
         long len;
         while ([inputStream hasBytesAvailable])
         {
@@ -332,6 +341,13 @@ BOOL isNeedToProcessNetworkDatas = false;
                 NSString* rawString = [[NSString alloc] initWithBytes : buffer
                                                                length : len
                                                              encoding : NSUTF8StringEncoding];
+                
+                
+                if(lastString){
+                    rawString = [NSString stringWithFormat:@"%@%@",lastString,rawString];
+                    lastString = NULL;
+                }
+                
                 NSArray* packetSegemets = [rawString componentsSeparatedByString:@"\r\n"];
                 for(NSString* output in packetSegemets)
                 {
@@ -345,7 +361,7 @@ BOOL isNeedToProcessNetworkDatas = false;
                             NSDictionary* dataDict = [resultDict objectForKey:@"data"];
                             if([resultType compare:@"feelingUpdate"] == NSOrderedSame){
                                 NSDateComponents* componets = [self dateStringToComponents:[dataDict objectForKey:@"TARGET_DATE"]];
-                                double feeling = [[dataDict objectForKey:@"FEELING"] doubleValue];
+                                double feeling    = [[dataDict objectForKey:@"FEELING"] doubleValue];
                                 double avgFeeling = [[dataDict objectForKey:@"AVG_FEELING"] doubleValue];
                                 
                                 ccColor4B firstColor = [self colorWithFeeling:feeling];
@@ -361,7 +377,6 @@ BOOL isNeedToProcessNetworkDatas = false;
                                 
                                 [dayViews[componets.month-1][componets.day-1]
                                                 runAction:[CCSequence actions:a1,a2, nil]];
-                                NSLog(@"%@",resultDict);
                             }
                             else if([resultType compare:@"controllStart"] == NSOrderedSame){
                                 
@@ -377,25 +392,63 @@ BOOL isNeedToProcessNetworkDatas = false;
                                     [self showDay:dayViews[today.month - 1][today.day - 1]];
                                 }
                             }
+                            else if([resultType compare:@"drawStart"] == NSOrderedSame){
+                                NSLog(@"%@",@"NewDrawStarted!!!!");
+                               
+                                CGRect rect;
+                                rect.origin = ccp(self.contentSize.width/2,self.contentSize.height/2);
+                                rect.size   = CGSizeMake( [[dataDict objectForKey:@"width" ] doubleValue],
+                                                          [[dataDict objectForKey:@"height"] doubleValue]);
+                                polyLine = [[CCPolyLine alloc] initWithFrame:rect];
+                                polyLine.scale = 700 / polyLine.contentSize.height;
+                                polyLine.currentLine.color = [self colorWithDict:[dataDict objectForKey:@"color"]];
+                                polyLine.currentLine.lineWidth = [[dataDict objectForKey:@"lineWidth"] doubleValue];
+                                
+                                NSLog(@"%@",dataDict);
+                                
+                                paintBackground.textureRect = CGRectMake(0, 0, rect.size.width, rect.size.height);
+                                paintBackground.scale = polyLine.scale;
+                                [paintBackground stopAllActions];
+                                [paintBackground runAction:[CCFadeTo actionWithDuration:0.3 opacity:255 * 0.7f]];
+                                
+                                MainScene* mainScene = (MainScene*) self.parent;
+                                [mainScene.dayLayer startPainting:polyLine];
+                            }   
+                            else if([resultType compare:@"drawLine"] == NSOrderedSame){
+                                [polyLine addPointToCurrentLine:[self dictToPoint:[dataDict valueForKey:@"position"]]];
+                                polyLine.currentLine.color = [self colorWithDict:[dataDict objectForKey:@"color"]];
+                                polyLine.currentLine.lineWidth = [[dataDict objectForKey:@"lineWidth"] doubleValue];
+                                NSLog(@"%f",polyLine.currentLine.lineWidth);
+                            }
+                            else if([resultType compare:@"drawLineEnd"] == NSOrderedSame){
+                                [polyLine createNewLine];
+                            }
+                            else if([resultType compare:@"drawEnd"] == NSOrderedSame){
+                                NSLog(@"%@",@"DrawEND!!!!");
+                                MainScene* mainScene = (MainScene*) self.parent;
+                                [mainScene.dayLayer endPainting];
+                                
+                                [paintBackground stopAllActions];
+                                [paintBackground runAction:[CCFadeOut actionWithDuration:0.4]];
+                            }
+                            
                             else if([resultType compare:@"patternKeyChanged"] == NSOrderedSame){
                                 NSMutableArray* pattern = [dataDict objectForKey:@"PATTERN"];
-                                NSLog(@"%@",pattern);
                                 MainScene* mainScene = (MainScene*) self.parent;
                                 [mainScene.dayLayer.patternLockSprite showPattern:pattern];
                             }
                             else if([resultType compare:@"newEvent"] == NSOrderedSame){
-                                NSLog(@"%@",dataDict);
                                 NSDateComponents* components = [self dateStringToComponents:[dataDict objectForKey:@"TARGET_DATE"]];
                                 DayView*    dayView  = dayViews[components.month-1][components.day-1];
                                 DiaryEvent* newEvent = [[DiaryEvent alloc] initWithDict:dataDict];
                                 [dayView.events addObject:newEvent];
                                 
                                 MainScene* mainScene = (MainScene*) self.parent;
-                                if(mainScene.dayLayer.currentDayView == dayView) //이미 선택되어서 dayLayer에서 보고 있는 날에 추가 이벤트가 달린 경우
+                                if(mainScene.dayLayer.currentDayView == dayView)
+                                    //이미 선택되어서 dayLayer에서 보고 있는 날에 추가 이벤트가 달린 경우
                                 {
                                     [mainScene.dayLayer showDay:dayView];
                                 }
-                                NSLog(@"%@",newEvent);
                             }
                             else if([resultType compare:@"showDate"] == NSOrderedSame){
                                 int month = [[dataDict objectForKey:@"MONTH"] intValue];
@@ -407,33 +460,37 @@ BOOL isNeedToProcessNetworkDatas = false;
                                 [self showMonthScene:month];
                             }
                             else if([resultType compare:@"allCalendar"] == NSOrderedSame){
-                                
-                                [[CCDirector sharedDirector] setDisplayFPS:NO];
+                                //[[CCDirector sharedDirector] setDisplayFPS:NO];
                                 
                                 for(NSString* day in [dataDict allKeys]){
                                     NSDictionary* dayDict = [dataDict objectForKey:day];
                                     [self initDayViewInfoWithDateString:day
                                                                    Dict:dayDict];
                                 }
-                                /*
-                                MainScene* mainScene = (MainScene*) self.parent;
-                                [mainScene.dayLayer showDay:dayViews[0][0]];
-                                [self showMonthScene:9];
-                                 */
                                 NSDateComponents* today =
                                 [[NSCalendar currentCalendar]components:NSDayCalendarUnit |
                                  NSMonthCalendarUnit |
                                  NSYearCalendarUnit
                                                                fromDate:[NSDate date]];
                                 [self showDay:dayViews[today.month - 1][today.day - 1]];
+                                
+                                
+                                paintBackground = [CCSprite spriteWithFile:@"back.png" ];
+                                paintBackground.position = ccp(self.contentSize.width/2,self.contentSize.height/2);
+                                paintBackground.anchorPoint = ccp(0.5,0.5);
+                                paintBackground.opacity = 0;
+                                [self addChild:paintBackground];
                             }
                             else{
                                 NSLog(@"not catched message : %@\n%@",resultType,resultDict);
                             }
                         }
                         else
+                        {
+                            //데이터가 짤린경우
+                            lastString = [output copy];
                             NSLog(@"not Jsoned message : %@",output);
-                        
+                        }
                     }
                 }
             }
