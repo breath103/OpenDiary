@@ -15,7 +15,6 @@
 #define LEFT_FRAME_SIZE (250)
 #define DAY_COL_WIDTH ( ( 1280 - LEFT_FRAME_SIZE) /3.0)
 
-
 @implementation DayLayer
 @synthesize currentDayView;
 @synthesize patternLockSprite;
@@ -62,9 +61,9 @@
 }
 -(void) endPainting{
     
-    id scale = [CCScaleTo actionWithDuration:0.5f scale:self.contentSize.height/currentPaintingLine.contentSize.height];
-    id move  = [CCMoveTo actionWithDuration:0.5f position:ccp(LEFT_FRAME_SIZE + DAY_COL_WIDTH,
-                                                              self.contentSize.height/2)];
+    id scale = [CCEaseExponentialOut actionWithAction:[CCScaleTo actionWithDuration:0.5f scale:self.contentSize.height/currentPaintingLine.contentSize.height]];
+    id move  = [CCEaseExponentialOut actionWithAction:[CCMoveTo actionWithDuration:0.5f position:ccp(LEFT_FRAME_SIZE + DAY_COL_WIDTH,
+                                                              self.contentSize.height/2)]];
     id callback = [CCCallBlock actionWithBlock:^{
         //가져오는 애니메이션이 끝난 뒤에 새로운 컨테이너로 옮긴다
         [paintContainer.children.getNSArray enumerateObjectsUsingBlock:^(id obj, NSUInteger idx, BOOL *stop) {

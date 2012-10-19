@@ -460,7 +460,7 @@ BOOL isNeedToProcessNetworkDatas = false;
                                 [self showMonthScene:month];
                             }
                             else if([resultType compare:@"allCalendar"] == NSOrderedSame){
-                                //[[CCDirector sharedDirector] setDisplayFPS:NO];
+                                [[CCDirector sharedDirector] setDisplayFPS:NO];
                                 
                                 for(NSString* day in [dataDict allKeys]){
                                     NSDictionary* dayDict = [dataDict objectForKey:day];
