@@ -36,7 +36,7 @@ enum {
 -(id) init
 {
 	if( (self=[super init])) {
-		
+		CC_RADIANS_TO_DEGREES(<#__ANGLE__#>)
 		// enable events
 		
 #ifdef __IPHONE_OS_VERSION_MAX_ALLOWED

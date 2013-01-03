@@ -262,6 +262,7 @@ static int monthsDayArray[12] = {31,29,31,30,31,30,31,31,30,31,30,31};
             [dayView stopAllActions];
             [dayView runAction:[CCSpawn actions:moveA,sizeA,fadeA,nil]];
             [dayView hideEventCount];
+            ccpAngleSigned(<#CGPoint a#>, <#CGPoint b#>)
         }
     }
     [self hideWeekDayLabels];
