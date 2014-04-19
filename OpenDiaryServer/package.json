@@ -1,0 +1,13 @@
+{
+  "name": "OpenDiary",
+  "description": "Open Diary",
+  "author": "Kurt Sang Hyun Lee <kurt@vingle.net>",
+  "dependencies": {
+    "express": "3.x.x",
+    "facebook-graph": "*",
+    "async" : "*",
+    "step" : "*",
+    "mysql" : "*",
+    "socket.io" : "*"
+  }
+}

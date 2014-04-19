@@ -4,11 +4,12 @@ var util 	 = require('util');
 
 function DBTemplate(){
 	var outerThis = this;
-	this.client = mysql.createClient({
+	this.client = mysql.createConnection({
 		host : "dasan.skku.edu",
 	    user : 'inmunskku',
 	    password : '1278'
 	});
+	this.client.connect();
 	this.client.query('USE inmunskku', function(error, results){
 	    if(error) {
 	        console.log("database connect error: " + error);

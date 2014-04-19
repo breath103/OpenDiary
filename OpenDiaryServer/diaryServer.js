@@ -22,7 +22,7 @@ function TodaysString() {return (new Date()).format("yyyy-MM-dd");}
 function StringToDayString(str) {return (new Date(str)).format("yyyy-MM-dd");}
 
 function initExpressEndSocketIO(){
-		app.configure(function() {
+	app.configure(function() {
 		app.set('views', __dirname + '/views');
 		app.set('view options', { layout: false });
 		app.use(express.methodOverride());
@@ -71,10 +71,10 @@ initExpressEndSocketIO();
 
 var viewClients = [];
 net.createServer(function(socket) {
-	socket.on("connect", function() {
-		viewClients.push(socket);
-		
-		dbTemplate.getAllDaysFeeling(function(feelingArray){
+	console.log("Connected!!!!!");
+	viewClients.push(socket);
+	dbTemplate.getAllDaysFeeling(function(feelingArray){
+		console.log(feelingArray);
 		dbTemplate.getAllDaysEvent(function(eventArray){
 			calendarInfo = {};
 			feelingArray.forEach(function(day){ 
@@ -96,16 +96,15 @@ net.createServer(function(socket) {
 			})+"\r\n");
 			socket.write( JSON.stringify({type:"patternKeyChanged",data : {PATTERN:getControlPassword()}}) +"\r\n" );
 		});
-		});
 	});
-	socket.on("close", function() {
+	socket.on("end", function() {
 		viewClients.remove(socket);
 	});
 	socket.on("data", function(data) {
 		console.log("tcp : "+data);
 	});
-}).listen(7777,"0.0.0.0");
-
+}).listen(7777, "0.0.0.0");
+console.log("listen TCP on 7777")
 
 
 var diaryUsingTimeout = 60000;

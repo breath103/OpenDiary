@@ -138,8 +138,8 @@ static int monthsDayArray[12] = {31,29,31,30,31,30,31,31,30,31,30,31};
     NSInputStream*  iStream;
     
     
- //   NSHost *host = [NSHost hostWithAddress: @"127.0.0.1"];//@"203.253.20.217"];
-    NSHost *host = [NSHost hostWithAddress: @"64.23.73.155"];
+    NSHost *host = [NSHost hostWithAddress: @"127.0.0.1"];//@"203.253.20.217"];
+ //   NSHost *host = [NSHost hostWithAddress: @"64.23.73.155"];
     
     [NSStream getStreamsToHost:host
                           port:7777
@@ -262,7 +262,6 @@ static int monthsDayArray[12] = {31,29,31,30,31,30,31,31,30,31,30,31};
             [dayView stopAllActions];
             [dayView runAction:[CCSpawn actions:moveA,sizeA,fadeA,nil]];
             [dayView hideEventCount];
-            ccpAngleSigned(<#CGPoint a#>, <#CGPoint b#>)
         }
     }
     [self hideWeekDayLabels];
@@ -501,6 +500,9 @@ BOOL isNeedToProcessNetworkDatas = false;
 - (void) stream : (NSStream *)theStream
     handleEvent : (NSStreamEvent)streamEvent
 {
+    if (theStream == inputStream) {
+        NSLog(@"!!!!!!!!!");
+    }
     switch (streamEvent) {
         case NSStreamEventHasBytesAvailable:
             if (theStream == inputStream){
@@ -509,6 +511,7 @@ BOOL isNeedToProcessNetworkDatas = false;
             break;
         case NSStreamEventNone : break;
         case NSStreamEventOpenCompleted  : break;
+            NSLog(@"%@",@"Connected"); break;
         case NSStreamEventErrorOccurred  :
             NSLog(@"%@",@"Connection Error");
             break;
